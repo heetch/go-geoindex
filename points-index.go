@@ -24,7 +24,8 @@ func NewPointsIndex(resolution Meters) *PointsIndex {
 }
 
 // NewExpiringPointsIndex creates new PointIndex that expires the points in each cell after expiration minutes.
-func NewExpiringPointsIndex(resolution Meters, expiration Minutes) *PointsIndex {
+// the callback will be called when the point gets deleted
+func NewExpiringPointsIndexWithCallback(resolution Meters, expiration Minutes, callback func(point Point)) *PointsIndex {
 	currentPosition := make(map[string]Point)
 
 	newExpiringSet := func() interface{} {
@@ -33,12 +34,18 @@ func NewExpiringPointsIndex(resolution Meters, expiration Minutes) *PointsIndex 
 		set.OnExpire(func(id string, value interface{}) {
 			point := value.(Point)
 			delete(currentPosition, point.Id())
+			callback(point)
 		})
 
 		return set
 	}
 
 	return &PointsIndex{newGeoIndex(resolution, newExpiringSet), currentPosition}
+}
+
+// NewExpiringPointsIndex creates new PointIndex that expires the points in each cell after expiration minutes.
+func NewExpiringPointsIndex(resolution Meters, expiration Minutes) *PointsIndex {
+	return NewExpiringPointsIndexWithCallback(resolution, expiration, func(point Point) {})
 }
 
 // Get gets a point from the index given an id.
